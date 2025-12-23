@@ -42,7 +42,7 @@ class Value(object):
         out = Value(data=self.data**other, _children=(self,), _op=f"**{other}")
 
         def _backward():
-            self.grad += (out.data > 0) * out.grad
+            self.grad += other * (self.data ** (other - 1)) * out.grad
 
         out._backward = _backward
 
@@ -76,22 +76,21 @@ class Value(object):
 
         return out
 
-    def _build_topo(self, v):
+    def backward(self):
+    
         topo = []
         visited = set()
-        if v not in visited:
-            visited.add(v)
-            for child in v._prev:
-                self._build_topo(child)
-            topo.append(v)
-        return topo
-
-    def backward(self):
-        topo = self._build_topo(self)
-
-        self.grad = 1
-        for v in reversed(topo):
-            v._backward()
+        def build_topo(v):
+            if v not in visited:
+                visited.add(v)
+                for child in v._prev:
+                    build_topo(child)
+                topo.append(v)
+        build_topo(self)
+        
+        self.grad = 1.0
+        for node in reversed(topo):
+            node._backward()
 
     def __radd__(self, other):
         out = self + other
